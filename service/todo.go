@@ -26,6 +26,7 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`
 	)
 
+	s.db.ExecContext()
 	return nil, nil
 }
 
