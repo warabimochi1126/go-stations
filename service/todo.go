@@ -34,10 +34,6 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 	// insert文にプレースホルダーで引数埋め込み
 	result, err := s.db.ExecContext(ctx, insert, subject, description)
 
-	fmt.Println("-------")
-	fmt.Println(result)
-	fmt.Println("-------")
-
 	if err != nil {
 		fmt.Println("--------")
 		fmt.Println("insertでエラー発生")
@@ -57,16 +53,23 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 
 	// select文にプレースホルダーで引数埋め込み
 	var Todo model.TODO
+
 	row := s.db.QueryRowContext(ctx, confirm, lastInsertId)
 
 	// レコードを構造体に適合させる
 	// TODO:&なかったらどうなるのか見てみたい
-	row.Scan(&Todo.ID, &Todo.Subject, &Todo.Description, &Todo.CreatedAt, &Todo.UpdatedAt)
+	rowError := row.Scan(&Todo.Subject, &Todo.Description, &Todo.CreatedAt, &Todo.UpdatedAt)
 
+	if rowError != nil {
+		fmt.Println("select文でエラーが発生した。")
+		return nil, rowError
+	}
+
+	// Todoにid入れてない。
 	fmt.Println("-----------------")
 	fmt.Println(Todo)
-	fmt.Println(&Todo)
 	fmt.Println("-----------------")
+
 	return &Todo, nil
 }
 
