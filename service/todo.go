@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/TechBowl-japan/go-stations/model"
 )
@@ -26,8 +27,47 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`
 	)
 
-	s.db.ExecContext()
-	return nil, nil
+	fmt.Println("----")
+	fmt.Println("subject:", subject, "description:", description)
+	fmt.Println("----")
+
+	// insert文にプレースホルダーで引数埋め込み
+	result, err := s.db.ExecContext(ctx, insert, subject, description)
+
+	fmt.Println("-------")
+	fmt.Println(result)
+	fmt.Println("-------")
+
+	if err != nil {
+		fmt.Println("--------")
+		fmt.Println("insertでエラー発生")
+		fmt.Println(err)
+		fmt.Println("--------")
+
+		return nil, err
+	}
+
+	// 自動挿入されたIDを取得する
+	lastInsertId, err := result.LastInsertId()
+
+	if err != nil {
+		fmt.Println("自動挿入されたIDが取得できない")
+		return nil, err
+	}
+
+	// select文にプレースホルダーで引数埋め込み
+	var Todo model.TODO
+	row := s.db.QueryRowContext(ctx, confirm, lastInsertId)
+
+	// レコードを構造体に適合させる
+	// TODO:&なかったらどうなるのか見てみたい
+	row.Scan(&Todo.ID, &Todo.Subject, &Todo.Description, &Todo.CreatedAt, &Todo.UpdatedAt)
+
+	fmt.Println("-----------------")
+	fmt.Println(Todo)
+	fmt.Println(&Todo)
+	fmt.Println("-----------------")
+	return &Todo, nil
 }
 
 // ReadTODO reads TODOs on DB.
