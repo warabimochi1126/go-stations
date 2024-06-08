@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -46,14 +47,28 @@ func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) 
 }
 
 func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("len:", r.ContentLength)
-	len := r.ContentLength
-	body := make([]byte, len) // Content-Length と同じサイズの byte 配列を用意
+	// r.ContentLengthでbodyの長さ取ってきてる
+	body := make([]byte, r.ContentLength)
 	r.Body.Read(body)
-	fmt.Fprintln(w, string(body))
 
-	// if r.Method == "POST" {
-	// h.Create()
-	// }
+	if r.Method == "POST" {
+		var createTodoReq model.CreateTODORequest
+		json.Unmarshal(body, &createTodoReq)
 
+		if createTodoReq.Subject == "" {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			todo, _ := h.svc.CreateTODO(r.Context(), createTodoReq.Subject, createTodoReq.Description)
+
+			var responseTodo model.CreateTODOResponse
+			responseTodo.TODO = *todo
+
+			err := json.NewEncoder(w).Encode(responseTodo)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}
+	}
 }

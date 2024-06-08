@@ -27,19 +27,11 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`
 	)
 
-	fmt.Println("----")
-	fmt.Println("subject:", subject, "description:", description)
-	fmt.Println("----")
-
 	// insert文にプレースホルダーで引数埋め込み
 	result, err := s.db.ExecContext(ctx, insert, subject, description)
 
 	if err != nil {
-		fmt.Println("--------")
 		fmt.Println("insertでエラー発生")
-		fmt.Println(err)
-		fmt.Println("--------")
-
 		return nil, err
 	}
 
@@ -60,12 +52,14 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 	// TODO:&なかったらどうなるのか見てみたい
 	rowError := row.Scan(&Todo.Subject, &Todo.Description, &Todo.CreatedAt, &Todo.UpdatedAt)
 
+	// TODOにlastInsertIdを代入する
+	Todo.ID = int64(lastInsertId)
+
 	if rowError != nil {
 		fmt.Println("select文でエラーが発生した。")
 		return nil, rowError
 	}
 
-	// Todoにid入れてない。
 	fmt.Println("-----------------")
 	fmt.Println(Todo)
 	fmt.Println("-----------------")
@@ -89,6 +83,20 @@ func (s *TODOService) UpdateTODO(ctx context.Context, id int64, subject, descrip
 		update  = `UPDATE todos SET subject = ?, description = ? WHERE id = ?`
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`
 	)
+
+	// 先にupdateクエリを流す
+	result, err := s.db.ExecContext(ctx, update, subject, description, id)
+
+	if err != nil {
+		fmt.Println("insertでエラー発生")
+		return nil, err
+	}
+
+	// result見てrowの数取得したい.0だったらエラー返す
+	rows, err := result.RowsAffected()
+	if rows == 0 {
+
+	}
 
 	return nil, nil
 }
