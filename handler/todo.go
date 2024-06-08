@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/TechBowl-japan/go-stations/model"
 	"github.com/TechBowl-japan/go-stations/service"
@@ -41,4 +43,17 @@ func (h *TODOHandler) Update(ctx context.Context, req *model.UpdateTODORequest) 
 func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) (*model.DeleteTODOResponse, error) {
 	_ = h.svc.DeleteTODO(ctx, nil)
 	return &model.DeleteTODOResponse{}, nil
+}
+
+func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("len:", r.ContentLength)
+	len := r.ContentLength
+	body := make([]byte, len) // Content-Length と同じサイズの byte 配列を用意
+	r.Body.Read(body)
+	fmt.Fprintln(w, string(body))
+
+	// if r.Method == "POST" {
+	// h.Create()
+	// }
+
 }
