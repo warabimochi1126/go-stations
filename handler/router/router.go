@@ -31,5 +31,9 @@ func NewRouter(todoDB *sql.DB) *http.ServeMux {
 	latencyHandler := handler.NewLatencyHandler()
 	mux.Handle("/latency", middleware.GetOS(middleware.GetTime(latencyHandler)))
 
+	// Go基礎編Station4
+	basicAuthHandler := handler.NewBasicAuthHandler()
+	mux.Handle("/basic-auth", middleware.BasicAuth(basicAuthHandler))
+
 	return mux
 }
