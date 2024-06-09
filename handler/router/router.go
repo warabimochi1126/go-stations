@@ -28,6 +28,8 @@ func NewRouter(todoDB *sql.DB) *http.ServeMux {
 	mux.Handle("/get-os", middleware.GetOS(getOsHandler))
 
 	// Go基礎編Station3
+	latencyHandler := handler.NewLatencyHandler()
+	mux.Handle("/latency", middleware.GetOS(middleware.GetTime(latencyHandler)))
 
 	return mux
 }
