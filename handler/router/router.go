@@ -23,5 +23,11 @@ func NewRouter(todoDB *sql.DB) *http.ServeMux {
 	doPanicHandler := handler.NewDoPanicHandler()
 	mux.Handle("/do-panic", middleware.Recovery(doPanicHandler))
 
+	// Go基礎編Station2
+	getOsHandler := handler.NewGetOsHandler()
+	mux.Handle("/get-os", middleware.GetOS(getOsHandler))
+
+	// Go基礎編Station3
+
 	return mux
 }
