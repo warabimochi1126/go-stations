@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/TechBowl-japan/go-stations/model"
 	"github.com/TechBowl-japan/go-stations/service"
@@ -47,11 +48,11 @@ func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) 
 }
 
 func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// r.ContentLengthでbodyの長さ取ってきてる
-	body := make([]byte, r.ContentLength)
-	r.Body.Read(body)
-
 	if r.Method == "POST" {
+		// r.ContentLengthでbodyの長さ取ってきてる
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body)
+
 		var createTodoReq model.CreateTODORequest
 		json.Unmarshal(body, &createTodoReq)
 
@@ -70,5 +71,96 @@ func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 		}
+	} else if r.Method == "PUT" {
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body)
+
+		var updateTodoReq model.UpdateTODORequest
+		json.Unmarshal(body, &updateTodoReq)
+
+		if updateTodoReq.ID == 0 || updateTodoReq.Subject == "" {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			todo, err := h.svc.UpdateTODO(r.Context(), updateTodoReq.ID, updateTodoReq.Subject, updateTodoReq.Description)
+
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+			}
+
+			var responseTodo model.UpdateTODOResponse
+			responseTodo.TODO = *todo
+
+			jsonError := json.NewEncoder(w).Encode(responseTodo)
+
+			if jsonError != nil {
+				fmt.Println(jsonError)
+			}
+
+		}
+	} else if r.Method == "GET" {
+		// クエリパラメータの取得
+		prevId := r.URL.Query().Get("prev_id")
+		size := r.URL.Query().Get("size")
+
+		var readTodoReq model.ReadTODORequest
+		prevIdInt, _ := strconv.Atoi(prevId)
+		sizeInt, _ := strconv.Atoi(size)
+
+		prevIdInt64 := int64(prevIdInt)
+		sizeInt64 := int64(sizeInt)
+
+		// defaultを与えるのはsizeが無い時じゃなくて0の時？
+		if sizeInt64 == 0 {
+			sizeInt64 = 5
+		}
+
+		readTodoReq.PrevID = prevIdInt64
+		readTodoReq.Size = sizeInt64
+
+		todos, _ := h.svc.ReadTODO(r.Context(), readTodoReq.PrevID, readTodoReq.Size)
+
+		// []*model.TODO を []model.TODO に変換する
+		var todoSlice []model.TODO
+		for _, todo := range todos {
+			todoSlice = append(todoSlice, *todo)
+		}
+
+		var responseTodo model.ReadTODOResponse
+		responseTodo.TODOs = todoSlice
+
+		// sliceがnullだったら空配列を代入する
+		if todoSlice == nil {
+			responseTodo.TODOs = make([]model.TODO, 0)
+		}
+
+		jsonError := json.NewEncoder(w).Encode(responseTodo)
+
+		if jsonError != nil {
+			fmt.Println(jsonError)
+		}
+	} else if r.Method == "DELETE" {
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body)
+
+		var deleteTodoReq model.DeleteTODORequest
+		json.Unmarshal(body, &deleteTodoReq)
+
+		if len(deleteTodoReq.IDs) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			err := h.svc.DeleteTODO(r.Context(), deleteTodoReq.IDs)
+
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+			}
+
+			var deleteTodoRes model.DeleteTODOResponse
+			jsonError := json.NewEncoder(w).Encode(deleteTodoRes)
+
+			if jsonError != nil {
+				fmt.Println(jsonError)
+			}
+		}
+
 	}
 }
