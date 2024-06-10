@@ -55,7 +55,8 @@ func realMain() error {
 
 	// Go基礎編Station6
 	// os.Interrupt か os.Kill を受け取るまで待つ
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer stop()
 
 	// NOTE: 新しいエンドポイントの登録はrouter.NewRouterの内部で行うようにする
 	mux := router.NewRouter(todoDB)
