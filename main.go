@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/TechBowl-japan/go-stations/db"
@@ -55,32 +56,46 @@ func realMain() error {
 
 	// Go基礎編Station6
 	// os.Interrupt か os.Kill を受け取るまで待つ
+	// 受け取ったらctx.Done()から先を発火させられる？
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer stop()
 
 	// NOTE: 新しいエンドポイントの登録はrouter.NewRouterの内部で行うようにする
 	mux := router.NewRouter(todoDB)
 
-	// TODO: サーバーをlistenする
-	fmt.Println("done前")
-	// http.ListenAndServe(port, mux)
 	srv := &http.Server{
 		Addr:    port,
 		Handler: mux,
 	}
 
+	// メインゴルーチンが終了したら強制終了されるからサーバ停止用のゴルーチンが終了するまで待つ
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	// 平行で実行することでメインのゴルーチンの実行を止めない
+	go func() {
+		// サーバ停止してからWaitGroupのカウンタをデクリメントする
+		defer wg.Done()
+
+		// contextという平行実行される上でそもそも独立してる実行間で終了信号を受け渡している？
+		<-ctx.Done()
+		fmt.Println("goroutineの中で実行されている")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// サーバーを閉じる
+		srv.Shutdown(ctx)
+	}()
+
+	// TODO: サーバーをlistenする
+	fmt.Println("listen前")
+	// http.ListenAndServe(port, mux)
+
 	srv.ListenAndServe()
-	// os.Interrupt か os.Kill を受け取ったらこれ以降のコードが実行される
-	<-ctx.Done()
-	fmt.Println("done後")
-	// os.Interrupt か os.Kill を受け取ってから5秒待つ
-	ctxTimeOut, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-	err = srv.Shutdown(ctxTimeOut)
-
-	if err != nil {
-		return err
-	}
+	fmt.Println("listen後")
+	// WaitGroupのカウンタが0になるまでメインのゴルーチンを終了しない
+	wg.Wait()
 
 	return nil
 }
